@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Morat | Global Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,700&family=Syncopate:wght@700&family=Inter:wght@300;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #00f2ff; }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100vh; font-family: 'Inter', sans-serif; }
+
+        /* MOTOR DE PAISAJES */
+        #stage { position: fixed; inset: 0; z-index: -2; transition: filter 2s; }
+        .bg-layer {
+            position: absolute; inset: 0; background-size: cover; background-position: center;
+            opacity: 0; transition: opacity 3s ease-in-out, transform 10s ease-out;
+            transform: scale(1.2);
+        }
+        .bg-layer.active { opacity: 0.5; transform: scale(1); }
+
+        /* CAPAS DE EFECTOS */
+        .overlay { position: fixed; inset: 0; background: radial-gradient(circle, transparent 20%, #000 120%); z-index: -1; }
+        .rain { position: fixed; inset: 0; background: url('https://raw.githubusercontent.com/PiyushSuthar/Rain-Effect/master/rain.png'); opacity: 0.1; animation: rain 0.3s infinite linear; z-index: -1; }
+        @keyframes rain { from { background-position: 0 0; } to { background-position: 10% 100%; } }
+
+        /* INTRO PREPARADA */
+        #intro {
+            position: fixed; inset: 0; z-index: 500; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; background: #000; transition: 1.5s;
+        }
+        .prep-text { font-family: 'Syncopate'; color: white; letter-spacing: 15px; font-size: 1.5rem; margin-bottom: 40px; }
+        .start-btn {
+            background: none; border: 1px solid var(--accent); color: white; padding: 15px 40px;
+            text-transform: uppercase; cursor: pointer; transition: 0.4s; letter-spacing: 5px;
+        }
+        .start-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 50px var(--accent); }
+
+        /* LETRAS PREMIUM */
+        .lyrics-container {
+            position: fixed; inset: 0; display: flex; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 10; text-align: center;
+        }
+        #lyric-text {
+            color: #fff; font-size: 4.5rem; line-height: 1.1; max-width: 80%;
+            transition: all 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            opacity: 0; filter: blur(20px); transform: perspective(500px) translateZ(-100px);
+        }
+        #lyric-text.show { opacity: 1; filter: blur(0); transform: perspective(500px) translateZ(0); }
+        
+        /* Estilos de letra dinámicos */
+        .style-elegant { font-family: 'Bodoni Moda', serif; font-style: italic; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        .style-power { font-family: 'Syncopate', sans-serif; font-weight: 900; text-transform: uppercase; text-shadow: 0 0 30px var(--accent); }
+
+        /* REPRODUCTOR MINIMALISTA */
+        .player-bar {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 300px; padding: 15px; background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px); border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; gap: 15px; z-index: 100; opacity: 0; transition: 1s;
+        }
+        #time-display { color: var(--accent); font-family: monospace; font-size: 0.9rem; }
+        .progress-bg { flex: 1; height: 3px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+        #progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+
+        #fade-out { position: fixed; inset: 0; background: #000; opacity: 0; z-index: 1000; pointer-events: none; transition: 4s; }
+    </style>
+</head>
+<body>
+
+    <div id="fade-out"></div>
+
+    <div id="intro">
+        <div class="prep-text">¿ESTAS PREPARAD@?</div>
+        <button class="start-btn" onclick="iniciar()">EMPEZAR VIAJE</button>
+    </div>
+
+    <div id="stage">
+        <div class="bg-layer active" style="background-image: url('ciudad.jpg')"></div>
+        <div class="bg-layer" style="background-image: url('lago.jpg')"></div>
+        <div class="bg-layer" style="background-image: url('mar.jpg')"></div>
+    </div>
+    <div class="overlay"></div>
+    <div class="rain"></div>
+
+    <div class="lyrics-container">
+        <h1 id="lyric-text"></h1>
+    </div>
+
+    <div class="player-bar" id="ui">
+        <span id="time-display">00:00</span>
+        <div class="progress-bg"><div id="progress-fill"></div></div>
+    </div>
+
+    <audio id="audio" src="musica.mp3"></audio>
+
+    <script>
+        const audio = document.getElementById('audio');
+        const lyricText = document.getElementById('lyric-text');
+        const layers = document.querySelectorAll('.bg-layer');
+        
+        const syncData = [
+            { t: 0, text: "MORAT", style: "style-power", bg: 0 },
+            { t: 8.5, text: "Quiero que sepas que te quiero", style: "style-elegant", bg: 0 },
+            { t: 12, text: "Y que no importa lo que pase", style: "style-elegant", bg: 1 },
+            { t: 15.5, text: "Si estás conmigo", style: "style-power", bg: 1 },
+            { t: 18, text: "Tengo mi vida entera", style: "style-power", bg: 2 },
+            { t: 22, text: "Para entregártela", style: "style-elegant", bg: 2 }
+        ];
+
+        function iniciar() {
+            document.getElementById('intro').style.opacity = '0';
+            document.getElementById('ui').style.opacity = '1';
+            setTimeout(() => {
+                document.getElementById('intro').style.display = 'none';
+                audio.play();
+                update();
+            }, 1500);
+        }
+
+        function update() {
+            setInterval(() => {
+                const now = audio.currentTime;
+                
+                // Actualizar Tiempo y Barra
+                const mins = Math.floor(now / 60);
+                const secs = Math.floor(now % 60);
+                document.getElementById('time-display').innerText = 
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                document.getElementById('progress-fill').style.width = `${(now / audio.duration) * 100}%`;
+
+                // Sincronizar Letras y Fondos
+                let current = syncData.find((l, i) => {
+                    let next = syncData[i+1] ? syncData[i+1].t : 9999;
+                    return now >= l.t && now < next;
+                });
+
+                if (current && lyricText.innerText !== current.text) {
+                    // Cambiar Texto
+                    lyricText.className = '';
+                    lyricText.classList.add(current.style);
+                    lyricText.innerText = current.text;
+                    lyricText.classList.add('show');
+
+                    // Cambiar Fondos
+                    layers.forEach((l, idx) => {
+                        l.classList.toggle('active', idx === current.bg);
+                    });
+                }
+
+                // Fase 3: Desvanecido final
+                if (audio.ended || (audio.duration > 0 && now >= audio.duration - 4)) {
+                    document.getElementById('fade-out').style.opacity = '1';
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>
